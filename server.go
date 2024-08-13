@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log"
 	"net/http"
 )
@@ -43,6 +45,10 @@ func(s *Server)handleApplication(w http.ResponseWriter, r *http.Request)error{
 		return s.handlePostApplication(w,r)
 	case "GET":
 		return s.handleFetchAllApplication(w,r)
+	case "DELETE":
+		return s.handleDeleteApplicationById(w,r)
+	case "PATCH":
+		return s.handleUpdateApplication(w,r)
 
 	}
 	return nil
@@ -50,8 +56,11 @@ func(s *Server)handleApplication(w http.ResponseWriter, r *http.Request)error{
 
 func(s *Server)handlePostApplication(w http.ResponseWriter, r *http.Request)error{
 		var requestBody Application
-		json.NewDecoder(r.Body).Decode(&requestBody)
-		err:=s.store.InsertApplication(r.Context(),&requestBody)
+		err:=json.NewDecoder(r.Body).Decode(&requestBody)
+		if err!=nil{
+			return err
+		}
+		err=s.store.InsertApplication(r.Context(),&requestBody)
 		if err!=nil{
 			return err
 		}
@@ -59,11 +68,56 @@ func(s *Server)handlePostApplication(w http.ResponseWriter, r *http.Request)erro
 		return nil
 }
 func(s *Server)handleFetchAllApplication(w http.ResponseWriter, r *http.Request)error{
+	id:=r.URL.Query().Get("id")
+	if id!=""{
+		return s.handleDeleteApplicationById(w,r)
+	}
 	applications,err:=s.store.FetchAll(r.Context())
 	if err!=nil{
 		return err
 	}
 	WriteJson(w,http.StatusOK,applications)
+	return nil
+}
+func(s *Server)handleDeleteApplicationById(w http.ResponseWriter, r *http.Request)error{
+	var requestId RequestId 
+	err:=json.NewDecoder(r.Body).Decode(&requestId)
+	if err!=nil{
+		return err
+	}
+	err=s.store.Delete(r.Context(),requestId.Id)
+	if err!=nil{
+		return err
+	}
+	WriteJson(w,http.StatusOK,map[string]string{"message":"Application successfully deleted"})
+	return nil
+}
+
+func(s *Server)handleGetApplicationById(w http.ResponseWriter, r *http.Request)error{
+	id:=r.URL.Query().Get("id")
+	application,err:=s.store.GetApplicationById(r.Context(),id)
+	if err!=nil{
+		return err
+	}
+	WriteJson(w,http.StatusOK,application)
+	return nil
+}
+
+func(s *Server)handleUpdateApplication(w http.ResponseWriter,r *http.Request)error{
+	id:=r.URL.Query().Get("id")
+	if id==""{
+		return errors.New("id of the document to be updated is not provided")
+	}
+	var application map[string]interface{}
+	err:=json.NewDecoder(r.Body).Decode(&application)
+	if err!=nil{
+		return err
+	}
+	err=s.store.UpdateApplication(r.Context(),application,id)
+	if err!=nil{
+		return nil
+	}
+	WriteJson(w,http.StatusOK,map[string]string{"message":"application data updated"})
 	return nil
 }
 
