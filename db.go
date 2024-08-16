@@ -15,7 +15,9 @@ import (
 )
 
 type Data map[string]interface{}
-
+//TODO
+//For checking the fields are valid or not
+// fields:=map[string]bool{}
 
 type Storage interface {
 	InsertApplication(ctx context.Context,appilcation *Application)error
@@ -34,6 +36,7 @@ func (store *mongoStore)InsertApplication(ctx context.Context,application *Appli
 		return errors.New("only male and female genders are acceptable")
 	}
 	postApplication:=application.NewApplicationPost()
+	postApplication.Gender = strings.ToLower(application.Gender)
 	coll:=store.database.Collection("application")
 	_,err:=coll.InsertOne(ctx,postApplication)
 	if err!=nil{
@@ -85,18 +88,22 @@ func(store *mongoStore)GetApplicationById(ctx context.Context,id string)(*PostAp
 }
 func(store *mongoStore)UpdateApplication(ctx context.Context,filters Data,id string)error{
 	coll:=store.database.Collection("application")
+	_,err:=store.GetApplicationById(ctx,id)
+	if err!=nil{
+		return err
+	}
 	options:=bson.M{"id":id}
 	fields:=makeBson(filters)
 	update:=bson.M{
 		"$set":fields,
 	}
-	result,err:=coll.UpdateOne(ctx,options,update)
-	if result.ModifiedCount==0{
-		return errors.New("the field you are trying to update does not exists please check your fields")
-	}
+	_,err=coll.UpdateOne(ctx,options,update)
 	if err!=nil{
 		return err
 	}
+	
+	
+	
 	return nil
 }
 func NewMongoStore(ctx context.Context) (*mongoStore,error){

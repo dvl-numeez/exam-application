@@ -77,7 +77,7 @@ func (s *Server) handleFetchAllApplication(w http.ResponseWriter, r *http.Reques
 }
 func (s *Server) handleDeleteApplicationById(w http.ResponseWriter, r *http.Request) error {
 	if r.Method != "POST" {
-		return errors.New("HTTP METHOD POST is only")
+		return errors.New("HTTP METHOD should be POST is only")
 	}
 
 	requestId :=RequestId{}
@@ -98,7 +98,7 @@ func (s *Server) handleDeleteApplicationById(w http.ResponseWriter, r *http.Requ
 
 func (s *Server) handleGetApplicationById(w http.ResponseWriter, r *http.Request) error {
 	if r.Method != "POST" {
-		return errors.New("HTTP METHOD POST is only")
+		return errors.New("HTTP METHOD should be POST is only")
 	}
 	requestId := RequestId{}
 	err := json.NewDecoder(r.Body).Decode(&requestId)
@@ -120,7 +120,7 @@ func (s *Server) handleGetApplicationById(w http.ResponseWriter, r *http.Request
 
 func (s *Server) handleUpdateApplication(w http.ResponseWriter, r *http.Request) error {
 	if r.Method != "POST" {
-		return errors.New("HTTP METHOD POST is only")
+		return errors.New("HTTP METHOD should be POST is only")
 	}
 	id := r.URL.Query().Get("id")
 	if id == "" {
