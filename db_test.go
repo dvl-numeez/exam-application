@@ -73,3 +73,39 @@ func TestInsertApplication(t *testing.T) {
 			
 		})
 }
+
+func TestDelete(t *testing.T){
+	store,err:=NewMongoStore(context.TODO())
+		if err!=nil{
+			t.Errorf("cannot get the store")
+		}
+	t.Run("Deleting document with wrong ID",func(t *testing.T){
+		err:=store.Delete(context.TODO(),"5749302")	
+		expected:=errors.New("the id referencing to the document in not correct such document does not exists")
+		if err.Error()!=expected.Error(){
+			t.Errorf("Actual error : %s Expected error : %s ",err.Error(),expected.Error())
+		}
+
+	})
+	t.Run("Deleting an actual document",func(t *testing.T){
+		err:=store.Delete(context.TODO(),"5749302")	
+		if err!=nil{
+			t.Error("not expecting an error but got an error")
+		}
+	})
+}
+
+
+func BenchmarkTest(b *testing.B) {
+	store,err:=NewMongoStore(context.TODO())
+		if err!=nil{
+			b.Errorf("cannot get the store")
+		}
+	for i:=0;i<b.N;i++{
+		err:=store.Delete(context.TODO(),"5749302")	
+		expected:=errors.New("the id referencing to the document in not correct such document does not exists")
+		if err.Error()!=expected.Error(){
+			b.Errorf("Actual error : %s Expected error : %s ",err.Error(),expected.Error())
+		}
+	}
+}

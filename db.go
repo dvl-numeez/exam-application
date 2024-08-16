@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
@@ -118,7 +119,8 @@ func NewMongoStore(ctx context.Context) (*mongoStore,error){
 func makeBson(filters map[string]interface{})bson.M{
 	result:=bson.M{}
 	for k,v:=range filters{
-		result[k] = v
+		lowerCaseKey := strings.ToLower(k)
+		result[lowerCaseKey] = v
 	}
 	return result 
 }
