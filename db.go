@@ -15,17 +15,16 @@ import (
 
 
 
-
 type Storage interface {
 	InsertApplication(ctx context.Context,appilcation *Application)error
-	FetchAll(ctx context.Context)([]PostApplication,error)
+	FetchAll(ctx context.Context,filters map[string]interface{})([]PostApplication,error)
 	Delete(ctx context.Context, id string)error
 	GetApplicationById(ctx context.Context,id string)(*PostApplication,error)
 	UpdateApplication(ctx context.Context, application map[string]interface{},id string)error
 }
 
 type mongoStore struct{
-	client *mongo.Client
+	database *mongo.Database
 }
 
 func (store *mongoStore)InsertApplication(ctx context.Context,application *Application)error{
@@ -33,7 +32,7 @@ func (store *mongoStore)InsertApplication(ctx context.Context,application *Appli
 		return errors.New("only male and female genders are acceptable")
 	}
 	postApplication:=application.NewApplicationPost()
-	coll:=store.client.Database("exam-application").Collection("application")
+	coll:=store.database.Collection("application")
 	_,err:=coll.InsertOne(ctx,postApplication)
 	if err!=nil{
 		return err
@@ -42,9 +41,10 @@ func (store *mongoStore)InsertApplication(ctx context.Context,application *Appli
 	return nil
 }
 
-func(store *mongoStore)FetchAll(ctx context.Context)([]PostApplication,error){
-	coll:=store.client.Database("exam-application").Collection("application")
-	cursor,err:=coll.Find(ctx,bson.D{})
+func(store *mongoStore)FetchAll(ctx context.Context,filters map[string]interface{})([]PostApplication,error){
+	coll:=store.database.Collection("application")
+	bsonFilters:=makeBson(filters)
+	cursor,err:=coll.Find(ctx,bsonFilters)
 	if err!=nil{
 		return nil,err
 	}
@@ -52,11 +52,14 @@ func(store *mongoStore)FetchAll(ctx context.Context)([]PostApplication,error){
 	if err:=cursor.All(ctx,&applications);err!=nil{
 		return nil,err
 	}
+	if applications==nil{
+		return nil,errors.New("the filters you provide does not exists check your fields again")
+	}
 	return applications,nil
 }
 func (store *mongoStore)Delete(ctx context.Context ,id string)error{
 	filter:=bson.M{"id":id}
-	coll:=store.client.Database("exam-application").Collection("application")
+	coll:=store.database.Collection("application")
 	deletedDocumentNum,err:=coll.DeleteOne(ctx,filter)
 	if deletedDocumentNum.DeletedCount==0{
 		return errors.New("the id referencing to the document in not correct such document does not exists")
@@ -69,7 +72,7 @@ func (store *mongoStore)Delete(ctx context.Context ,id string)error{
 
 func(store *mongoStore)GetApplicationById(ctx context.Context,id string)(*PostApplication,error){
 	var application PostApplication
-	coll:=store.client.Database("exam-application").Collection("application")
+	coll:=store.database.Collection("application")
 	filters:=bson.M{"id":id}
 	result:=coll.FindOne(ctx,filters)
 	err:=result.Decode(&application)
@@ -78,21 +81,17 @@ func(store *mongoStore)GetApplicationById(ctx context.Context,id string)(*PostAp
 	}
 	return &application,nil
 }
-func(store *mongoStore)UpdateApplication(ctx context.Context,application map[string]interface{},id string)error{
-	coll:=store.client.Database("exam-application").Collection("application")
-	filters:=bson.M{"id":id}
-	fields:= bson.M{}
-	for k,v:=range application{
-		fields[k] = v
-	}
-
+func(store *mongoStore)UpdateApplication(ctx context.Context,filters map[string]interface{},id string)error{
+	coll:=store.database.Collection("application")
+	options:=bson.M{"id":id}
+	fields:=makeBson(filters)
 	update:=bson.M{
 		"$set":fields,
 	}
-	_,err:=coll.UpdateOne(ctx,filters,update)
-	// if result.==0{
-	// 	return errors.New("the id of the  doucment to be updated does not exists")
-	// }
+	result,err:=coll.UpdateOne(ctx,options,update)
+	if result.ModifiedCount==0{
+		return errors.New("the field you are trying to update does not exists please check your fields")
+	}
 	if err!=nil{
 		return err
 	}
@@ -109,10 +108,17 @@ func NewMongoStore(ctx context.Context) (*mongoStore,error){
 		return nil,err
 	}
 	fmt.Println("Connected to the database")
-		
+	db:=client.Database("exam-application")	
 	return &mongoStore{
-		client: client,
+		database: db,
 	},nil
 }
 
 
+func makeBson(filters map[string]interface{})bson.M{
+	result:=bson.M{}
+	for k,v:=range filters{
+		result[k] = v
+	}
+	return result 
+}

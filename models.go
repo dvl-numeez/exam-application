@@ -1,6 +1,7 @@
 package main
 
 import (
+
 	"strings"
 	"time"
 
@@ -78,13 +79,13 @@ func (a *Application) CalculateAge() int {
 
 }
 
-func (a *Application) makeFullName(firstName, middleName, lastName string) string {
+func  makeFullName(firstName, middleName, lastName string) string {
 	return firstName + " " + middleName + " " + lastName
 }
 
 func (a *Application) NewApplicationPost() PostApplication {
-	fullName := a.makeFullName(a.FirstName, a.MiddleName, a.LastName)
-	fatherFullName := a.makeFullName(a.FatherFirstName, a.FatherMiddleName, a.FatherLastName)
+	fullName := makeFullName(a.FirstName, a.MiddleName, a.LastName)
+	fatherFullName := makeFullName(a.FatherFirstName, a.FatherMiddleName, a.FatherLastName)
 	age := a.CalculateAge()
 	return PostApplication{
 		Id:              uuid.New().String(),

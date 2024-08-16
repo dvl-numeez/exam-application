@@ -8,126 +8,142 @@ import (
 	"net/http"
 )
 
+type apiFunc func(w http.ResponseWriter, r *http.Request) error
 
-type apiFunc func(w http.ResponseWriter,r *http.Request)error
-
-type Server struct{
+type Server struct {
 	listenAddr string
-	store Storage
+	store      Storage
 }
 
-type ApiError struct{
+type ApiError struct {
 	Error string `json:"error"`
 }
 
-
-func NewApiServer(listenAddr string, store Storage)*Server{
+func NewApiServer(listenAddr string, store Storage) *Server {
 	return &Server{
 		listenAddr: listenAddr,
-		store: store,
+		store:      store,
 	}
 }
 
-func (s *Server)Start(){
-	router:= http.NewServeMux()
-	router.Handle("/application",makeHttpHandleFunc(s.handleApplication))
-	err:=http.ListenAndServe(s.listenAddr,router)
-	if err!=nil{
-		log.Fatal("Unable to start the server due to error : ",err)
+func (s *Server) Start() {
+	router := http.NewServeMux()
+	router.Handle("/application", makeHttpHandleFunc(s.handleGetApplicationById))
+	router.Handle("/getallapplications", makeHttpHandleFunc(s.handleFetchAllApplication))
+	router.Handle("/deleteapplication", makeHttpHandleFunc(s.handleDeleteApplicationById))
+	router.Handle("/updateapplication", makeHttpHandleFunc(s.handleUpdateApplication))
+	router.Handle("/makeapplication", makeHttpHandleFunc(s.handlePostApplication))
+	err := http.ListenAndServe(s.listenAddr, router)
+	if err != nil {
+		log.Fatal("Unable to start the server due to error : ", err)
 	}
-	
 
 }
 
-func(s *Server)handleApplication(w http.ResponseWriter, r *http.Request)error{
-	switch r.Method{	
-	case "POST":
-		return s.handlePostApplication(w,r)
-	case "GET":
-		return s.handleFetchAllApplication(w,r)
-	case "DELETE":
-		return s.handleDeleteApplicationById(w,r)
-	case "PATCH":
-		return s.handleUpdateApplication(w,r)
+func (s *Server) handlePostApplication(w http.ResponseWriter, r *http.Request) error {
+	requestBody:= Application{}
+	err := json.NewDecoder(r.Body).Decode(&requestBody)
+	if err != nil {
+		return err
+	}
+	err = s.store.InsertApplication(r.Context(), &requestBody)
+	if err != nil {
+		return err
+	}
+	err = WriteJson(w, http.StatusCreated, map[string]string{"message": "application created"})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func (s *Server) handleFetchAllApplication(w http.ResponseWriter, r *http.Request) error {
+	if r.Method != "POST" {
+		return errors.New("HTTP METHOD POST is only")
+	}
+	var filters map[string]interface{}
+	err := json.NewDecoder(r.Body).Decode(&filters)
+	if err != nil {
+		filters = map[string]interface{}{}
+	}
+	applications, err := s.store.FetchAll(r.Context(), filters)
+	if err != nil {
+		return err
+	}
+	err = WriteJson(w, http.StatusOK, applications)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func (s *Server) handleDeleteApplicationById(w http.ResponseWriter, r *http.Request) error {
+	if r.Method != "POST" {
+		return errors.New("HTTP METHOD POST is only")
+	}
 
+	requestId :=RequestId{}
+	err := json.NewDecoder(r.Body).Decode(&requestId)
+	if err != nil {
+		return err
+	}
+	err = s.store.Delete(r.Context(), requestId.Id)
+	if err != nil {
+		return err
+	}
+	err = WriteJson(w, http.StatusOK, map[string]string{"message": "Application successfully deleted"})
+	if err != nil {
+		return err
 	}
 	return nil
 }
 
-func(s *Server)handlePostApplication(w http.ResponseWriter, r *http.Request)error{
-		var requestBody Application
-		err:=json.NewDecoder(r.Body).Decode(&requestBody)
-		if err!=nil{
-			return err
-		}
-		err=s.store.InsertApplication(r.Context(),&requestBody)
-		if err!=nil{
-			return err
-		}
-		WriteJson(w,http.StatusCreated,map[string]string{"message":"application created"})
-		return nil
-}
-func(s *Server)handleFetchAllApplication(w http.ResponseWriter, r *http.Request)error{
-	id:=r.URL.Query().Get("id")
-	if id!=""{
-		return s.handleDeleteApplicationById(w,r)
+func (s *Server) handleGetApplicationById(w http.ResponseWriter, r *http.Request) error {
+	if r.Method != "POST" {
+		return errors.New("HTTP METHOD POST is only")
 	}
-	applications,err:=s.store.FetchAll(r.Context())
-	if err!=nil{
+	requestId := RequestId{}
+	err := json.NewDecoder(r.Body).Decode(&requestId)
+	if err != nil {
 		return err
 	}
-	WriteJson(w,http.StatusOK,applications)
-	return nil
-}
-func(s *Server)handleDeleteApplicationById(w http.ResponseWriter, r *http.Request)error{
-	var requestId RequestId 
-	err:=json.NewDecoder(r.Body).Decode(&requestId)
-	if err!=nil{
+	application, err := s.store.GetApplicationById(r.Context(), requestId.Id)
+	if err != nil {
+		fmt.Println(err.Error())
 		return err
 	}
-	err=s.store.Delete(r.Context(),requestId.Id)
-	if err!=nil{
+	err = WriteJson(w, http.StatusOK, application)
+	if err != nil {
 		return err
 	}
-	WriteJson(w,http.StatusOK,map[string]string{"message":"Application successfully deleted"})
+
 	return nil
 }
 
-func(s *Server)handleGetApplicationById(w http.ResponseWriter, r *http.Request)error{
-	id:=r.URL.Query().Get("id")
-	application,err:=s.store.GetApplicationById(r.Context(),id)
-	if err!=nil{
-		return err
+func (s *Server) handleUpdateApplication(w http.ResponseWriter, r *http.Request) error {
+	if r.Method != "POST" {
+		return errors.New("HTTP METHOD POST is only")
 	}
-	WriteJson(w,http.StatusOK,application)
-	return nil
-}
-
-func(s *Server)handleUpdateApplication(w http.ResponseWriter,r *http.Request)error{
-	id:=r.URL.Query().Get("id")
-	if id==""{
+	id := r.URL.Query().Get("id")
+	if id == "" {
 		return errors.New("id of the document to be updated is not provided")
 	}
-	var application map[string]interface{}
-	err:=json.NewDecoder(r.Body).Decode(&application)
-	if err!=nil{
+	var filters map[string]interface{}
+	err := json.NewDecoder(r.Body).Decode(&filters)
+	if err != nil {
 		return err
 	}
-	err=s.store.UpdateApplication(r.Context(),application,id)
-	if err!=nil{
-		return nil
+	err = s.store.UpdateApplication(r.Context(), filters, id)
+	if err != nil {
+		return err
 	}
-	WriteJson(w,http.StatusOK,map[string]string{"message":"application data updated"})
+	WriteJson(w, http.StatusOK, map[string]string{"message": "application data updated"})
 	return nil
 }
 
-
-
-func makeHttpHandleFunc(function apiFunc)http.HandlerFunc{
-	return func(w http.ResponseWriter, r *http.Request){
-		err:=function(w,r)
-		if err!=nil{
-			WriteJson(w,http.StatusBadRequest,ApiError{Error: err.Error()})
+func makeHttpHandleFunc(function apiFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		err := function(w, r)
+		if err != nil {
+			WriteJson(w, http.StatusBadRequest, ApiError{Error: err.Error()})
 		}
 	}
 }
