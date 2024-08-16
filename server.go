@@ -60,10 +60,10 @@ func (s *Server) handleFetchAllApplication(w http.ResponseWriter, r *http.Reques
 	if r.Method != "POST" {
 		return errors.New("HTTP METHOD POST is only")
 	}
-	var filters map[string]interface{}
+	var filters Data
 	err := json.NewDecoder(r.Body).Decode(&filters)
 	if err != nil {
-		filters = map[string]interface{}{}
+		filters =Data{}
 	}
 	applications, err := s.store.FetchAll(r.Context(), filters)
 	if err != nil {
@@ -126,7 +126,7 @@ func (s *Server) handleUpdateApplication(w http.ResponseWriter, r *http.Request)
 	if id == "" {
 		return errors.New("id of the document to be updated is not provided")
 	}
-	var filters map[string]interface{}
+	var filters Data
 	err := json.NewDecoder(r.Body).Decode(&filters)
 	if err != nil {
 		return err

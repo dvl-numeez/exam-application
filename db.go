@@ -14,14 +14,15 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
+type Data map[string]interface{}
 
 
 type Storage interface {
 	InsertApplication(ctx context.Context,appilcation *Application)error
-	FetchAll(ctx context.Context,filters map[string]interface{})([]PostApplication,error)
+	FetchAll(ctx context.Context,filters Data)([]PostApplication,error)
 	Delete(ctx context.Context, id string)error
 	GetApplicationById(ctx context.Context,id string)(*PostApplication,error)
-	UpdateApplication(ctx context.Context, application map[string]interface{},id string)error
+	UpdateApplication(ctx context.Context, application Data,id string)error
 }
 
 type mongoStore struct{
@@ -42,7 +43,7 @@ func (store *mongoStore)InsertApplication(ctx context.Context,application *Appli
 	return nil
 }
 
-func(store *mongoStore)FetchAll(ctx context.Context,filters map[string]interface{})([]PostApplication,error){
+func(store *mongoStore)FetchAll(ctx context.Context,filters Data)([]PostApplication,error){
 	coll:=store.database.Collection("application")
 	bsonFilters:=makeBson(filters)
 	cursor,err:=coll.Find(ctx,bsonFilters)
@@ -82,7 +83,7 @@ func(store *mongoStore)GetApplicationById(ctx context.Context,id string)(*PostAp
 	}
 	return &application,nil
 }
-func(store *mongoStore)UpdateApplication(ctx context.Context,filters map[string]interface{},id string)error{
+func(store *mongoStore)UpdateApplication(ctx context.Context,filters Data,id string)error{
 	coll:=store.database.Collection("application")
 	options:=bson.M{"id":id}
 	fields:=makeBson(filters)
@@ -116,7 +117,7 @@ func NewMongoStore(ctx context.Context) (*mongoStore,error){
 }
 
 
-func makeBson(filters map[string]interface{})bson.M{
+func makeBson(filters Data)bson.M{
 	result:=bson.M{}
 	for k,v:=range filters{
 		lowerCaseKey := strings.ToLower(k)
