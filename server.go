@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 )
@@ -41,6 +40,9 @@ func (s *Server) Start() {
 }
 
 func (s *Server) handlePostApplication(w http.ResponseWriter, r *http.Request) error {
+	if r.Method != "POST" {
+		return errors.New("HTTP METHOD POST is only")
+	}
 	requestBody:= Application{}
 	err := json.NewDecoder(r.Body).Decode(&requestBody)
 	if err != nil {
@@ -50,15 +52,12 @@ func (s *Server) handlePostApplication(w http.ResponseWriter, r *http.Request) e
 	if err != nil {
 		return err
 	}
-	err = WriteJson(w, http.StatusCreated, map[string]string{"message": "application created"})
-	if err != nil {
-		return err
-	}
+	 WriteJson(w, http.StatusCreated, map[string]string{"message": "application created"})
 	return nil
 }
 func (s *Server) handleFetchAllApplication(w http.ResponseWriter, r *http.Request) error {
 	if r.Method != "POST" {
-		return errors.New("HTTP METHOD POST is only")
+		return errors.New("HTTP METHOD POST is only allowed")
 	}
 	var filters Data
 	err := json.NewDecoder(r.Body).Decode(&filters)
@@ -69,17 +68,13 @@ func (s *Server) handleFetchAllApplication(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		return err
 	}
-	err = WriteJson(w, http.StatusOK, applications)
-	if err != nil {
-		return err
-	}
+	WriteJson(w, http.StatusOK, applications)
 	return nil
 }
 func (s *Server) handleDeleteApplicationById(w http.ResponseWriter, r *http.Request) error {
 	if r.Method != "POST" {
-		return errors.New("HTTP METHOD should be POST is only")
+		return errors.New("HTTP METHOD should be POST is only allowed")
 	}
-
 	requestId :=RequestId{}
 	err := json.NewDecoder(r.Body).Decode(&requestId)
 	if err != nil {
@@ -89,10 +84,7 @@ func (s *Server) handleDeleteApplicationById(w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		return err
 	}
-	err = WriteJson(w, http.StatusOK, map[string]string{"message": "Application successfully deleted"})
-	if err != nil {
-		return err
-	}
+	WriteJson(w, http.StatusOK, map[string]string{"message": "Application successfully deleted"})
 	return nil
 }
 
@@ -107,13 +99,9 @@ func (s *Server) handleGetApplicationById(w http.ResponseWriter, r *http.Request
 	}
 	application, err := s.store.GetApplicationById(r.Context(), requestId.Id)
 	if err != nil {
-		fmt.Println(err.Error())
 		return err
 	}
-	err = WriteJson(w, http.StatusOK, application)
-	if err != nil {
-		return err
-	}
+	WriteJson(w, http.StatusOK, application)
 
 	return nil
 }

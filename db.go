@@ -17,7 +17,32 @@ import (
 type Data map[string]interface{}
 //TODO
 //For checking the fields are valid or not
-// fields:=map[string]bool{}
+var  fields = map[string]bool{
+	"firstName":true,
+	"lastName":true,
+	"middleName":true,
+	"fatherMiddleName":true,
+	"fatherFirstName":true,
+	"fatherLastName":true,
+	"age":true,
+	"fullName":true,
+	"fatherFullName":true,
+	"boardName":true,
+	"stateOfDomicile":true,
+	"yearOfPassing":true,
+	"rollNumber":true,
+	"address":true,
+	"state":true,
+	"district":true,
+	"city":true,
+	"pincode":true,
+	"houseNo":true,
+	"village":true,
+	"gender":true,
+	"homeDistrict":true,
+	"dob":true,
+
+}
 
 type Storage interface {
 	InsertApplication(ctx context.Context,appilcation *Application)error
@@ -92,6 +117,9 @@ func(store *mongoStore)UpdateApplication(ctx context.Context,filters Data,id str
 	if err!=nil{
 		return err
 	}
+	if !checkFields(filters){
+		return errors.New("the filters you provide does not exists check your fields again") 
+	}
 	options:=bson.M{"id":id}
 	fields:=makeBson(filters)
 	update:=bson.M{
@@ -131,4 +159,15 @@ func makeBson(filters Data)bson.M{
 		result[lowerCaseKey] = v
 	}
 	return result 
+}
+
+
+func checkFields(data Data)bool{
+	for k,_:= range data{
+		ok:=fields[k]
+		if !ok{
+			return false
+		}
+	}
+	return true
 }

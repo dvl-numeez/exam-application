@@ -3,8 +3,11 @@ package main
 import (
 	"context"
 	"errors"
+	"reflect"
 	"testing"
 	"time"
+
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 
@@ -109,18 +112,35 @@ func TestUpdateApplication(t *testing.T){
 		}
 	})
 	t.Run("Updating an application", func(t *testing.T){
-		id:="11946ff2-c7e5-4942-9e43-630107058da7"
+		id:="2e78b0ea-82fc-42d8-82a0-65c08c891be8"
 		firstName:="Numeez Khan"
 		middleName:="Asif"
 		lastName:="Baloch"
 		data:=Data{
-			"firstname":firstName,
-			"middlename":middleName,
-			"lastname":lastName,
+			"firstName":firstName,
+			"middleName":middleName,
+			"lastName":lastName,
 		}
 		err:=store.UpdateApplication(context.TODO(),data,id)
 		if err!=nil{
 			t.Error("Error occured while upating the application : ",err)
+		}
+		
+	})
+	t.Run("Updating fields that does not exists", func(t *testing.T){
+		id:="2e78b0ea-82fc-42d8-82a0-65c08c891be8"
+		firstName:="Numeez Khan"
+		middleName:="Asif"
+		lastName:="Baloch"
+		data:=Data{
+			"firstNme":firstName,
+			"middleName":middleName,
+			"lastNam":lastName,
+		}
+		err:=store.UpdateApplication(context.TODO(),data,id)
+		got:=errors.New("the filters you provide does not exists check your fields again")
+		if err.Error()!=got.Error(){
+			t.Errorf("Actual error : %s Expected : %s",err.Error(),got.Error())
 		}
 		
 	})
@@ -132,7 +152,7 @@ func TestGetApplictionById(t *testing.T){
 			t.Errorf("cannot get the store")
 		}
 	t.Run("Testing by inputing valid id",func(t *testing.T){
-		wantedId:="11946ff2-c7e5-4942-9e43-630107058da7"
+		wantedId:="2e78b0ea-82fc-42d8-82a0-65c08c891be8"
 		application,err:=store.GetApplicationById(context.TODO(),wantedId)
 		if err!=nil{
 			t.Error("Error occured while fetching the application : ",err)
@@ -153,7 +173,80 @@ func TestGetApplictionById(t *testing.T){
 	})
 }
 
+func TestGetAllApplication(t *testing.T){
+	store,err:=NewMongoStore(context.TODO())
+		if err!=nil{
+			t.Errorf("cannot get the store")
+		}
+	t.Run("Fetch All applications",func(t  *testing.T){
+			applications,err:=store.FetchAll(context.TODO(),Data{})
+			if err!=nil{
+				t.Error("Error while fetching applications",err)
+			}
+			got:=len(applications)
+			if got==0{
+				t.Error("no applications in the database")
+			}
+	})
+	t.Run("Fetch All applications with filter",func(t  *testing.T){
+		applications,err:=store.FetchAll(context.TODO(),Data{"firstName":"Numeez"})
+		if err!=nil{
+			t.Error("Error while fetching applications",err)
+		}
+		length:=len(applications)
+		if length==0{
+			t.Error("Expected atleast one application with the filter")
+		}
+	})
+	t.Run("Fetch All applications with wrong filters",func(t  *testing.T){
+		_,err:=store.FetchAll(context.TODO(),Data{"college":"LJ"})
+		if err==nil{
+			t.Error("Expecting an error but did not get it")
+		}
+		
+	})
+}
 
+func TestMakeBson(t *testing.T){
+	data:=Data{
+		"firstName":"Numeez",
+		"lastName":"Baloch",
+	}
+	result:=makeBson(data)
+	expected:=bson.M{
+		"firstname":"Numeez",
+		"lastname":"Baloch",
+	}
+	if !reflect.DeepEqual(result,expected){
+		t.Errorf("Actual : %v, Expected : %v",result,expected)
+	}
+}
+func TestCheckFields(t *testing.T){
+	cases:= []struct{
+		data Data
+		result bool}{
+		{data :Data{
+			"firstName":"Numeez",
+			"lastName":"Baloch",
+		},
+		result: true,	
+	},
+	{data :Data{
+		"firstName":"Numeez",
+		"last":"Baloch",
+	},
+	result: false,	
+},
+}
+for _,c:= range cases{
+	t.Run("Checking fields",func(t *testing.T) {
+		actual:=checkFields(c.data)
+		if actual!=c.result{
+			t.Errorf("Actual : %t, Expected : %t",actual,c.result)
+		}
+	})
+}
+}
 
 func BenchmarkTest(b *testing.B) {
 	store,err:=NewMongoStore(context.TODO())
