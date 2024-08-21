@@ -37,6 +37,18 @@ curl -X POST http://localhost:5000/makeapplication \
     "gender": "MaLe",
     "city": "Melbourne",
     "district": "Ahmedabad",
+    "stateOfDomicile": "Gujarat",
+    "houseNo": "1",
+    "village": "Modasa",
+    "rollNumber": "355678692",
+    "state": "Gujarat",
+    "address": "1-Alfaruk society near Mohammadi park, Jivraj Park",
+    "pincode": 380051,
+    "yearOfPassing": "2023",
+    "boardName": "Gujarat State Board",
+    "homeDistrict": "Ahmedabad",
+    "dob": "2001-09-24T07:44:09.000Z"
+}'
 ```
 
 ## Updating an Application
